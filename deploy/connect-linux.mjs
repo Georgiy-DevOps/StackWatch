@@ -35,7 +35,7 @@ export async function connectLinux(options) {
   const status = state => writeFileSync(path.join(data,`connection-${address}.json`),JSON.stringify({state,server:address,time:new Date().toISOString()}),{mode:0o600});
   async function api(route,{method='GET',body}={}) {
     const r = await fetch(origin+route,{method,headers:{Origin:origin,'Content-Type':'application/json'},body:body ? JSON.stringify(body):undefined,signal:AbortSignal.timeout(10000)});
-    if (!r.ok) throw Error(`Local panel returned HTTP ${r.status}. Ensure Pulsewatch is running on port 4310 without a login key.`);
+    if (!r.ok) throw Error(`Local panel returned HTTP ${r.status}. Ensure StackWatch is running on port 4310 without a login key.`);
     return r.json();
   }
   let child, connected=false;
@@ -45,7 +45,7 @@ export async function connectLinux(options) {
     const template = readFileSync(path.join(import.meta.dirname,'linux-bootstrap.sh'),'utf8').replace(/\r\n/g,'\n');
     const knownHosts = path.join(data,'ssh_known_hosts').replaceAll('\\','/');
     const args = ['-T','-p',String(port),'-o','ExitOnForwardFailure=yes','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-o','ConnectTimeout=15','-o',`UserKnownHostsFile="${knownHosts}"`,'-L',`127.0.0.1:${local}:127.0.0.1:9109`,`${user}@${address}`,'bash -s'];
-    console.log(`Pulsewatch: Linux metrics for ${address}`);
+    console.log(`StackWatch: Linux metrics for ${address}`);
     console.log('Enter your SSH password in this window when prompted. Characters stay hidden.');
     console.log('On first connection, verify the server SSH fingerprint before accepting.');
     console.log('The installer adds a localhost-only agent and a systemd service.');

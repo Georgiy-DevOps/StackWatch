@@ -1,4 +1,4 @@
-# Run on another host, independent of the Pulsewatch server.
+# Run on another host, independent of the StackWatch server.
 services:
   watchdog:
     build: .

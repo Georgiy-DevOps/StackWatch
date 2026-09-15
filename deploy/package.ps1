@@ -3,11 +3,11 @@
 param([string]$Destination)
 $ErrorActionPreference='Stop'
 $pulseRoot=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-if (-not $Destination) { $Destination=Join-Path (Split-Path -Parent $pulseRoot) 'pulsewatch-v2.zip' }
+if (-not $Destination) { $Destination=Join-Path (Split-Path -Parent $pulseRoot) 'stackwatch-v2.zip' }
 $pulseZipPath=[IO.Path]::GetFullPath($Destination)
 $pulseOutputFolder=[IO.Path]::GetDirectoryName($pulseZipPath)
 if (-not (Test-Path -LiteralPath $pulseOutputFolder -PathType Container)) { throw 'Destination folder must exist' }
-$pulseTemporary=Join-Path $pulseOutputFolder ('pulsewatch-build-'+[Guid]::NewGuid().ToString('N')+'.zip')
+$pulseTemporary=Join-Path $pulseOutputFolder ('stackwatch-build-'+[Guid]::NewGuid().ToString('N')+'.zip')
 $pulseExcluded=@('.git','data','watchdog-data','backups','node_modules')
 $pulseFiles=@(Get-ChildItem -LiteralPath $pulseRoot -Recurse -Force -File | Where-Object {
   $relative=[IO.Path]::GetRelativePath($pulseRoot,$_.FullName)
@@ -18,7 +18,7 @@ $pulseFiles=@(Get-ChildItem -LiteralPath $pulseRoot -Recurse -Force -File | Wher
 $pulseZip=[IO.Compression.ZipFile]::Open($pulseTemporary,[IO.Compression.ZipArchiveMode]::Create)
 try {
   foreach ($file in $pulseFiles) {
-    $entry='pulsewatch/'+[IO.Path]::GetRelativePath($pulseRoot,$file.FullName).Replace('\','/')
+    $entry='stackwatch/'+[IO.Path]::GetRelativePath($pulseRoot,$file.FullName).Replace('\','/')
     [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($pulseZip,$file.FullName,$entry,[IO.Compression.CompressionLevel]::Optimal) | Out-Null
   }
 } finally { $pulseZip.Dispose() }

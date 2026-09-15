@@ -113,7 +113,7 @@ function renderServers(monitors) {
   filtered.sort((a, b) => rank[a.status] - rank[b.status] || (a.environment === 'prod' ? 0 : 1) - (b.environment === 'prod' ? 0 : 1) || a.name.localeCompare(b.name));
   $('#server-count').textContent = filtered.length;
   if (!monitors.length) {
-    $('#server-list').innerHTML = `<div class="empty-state"><div class="empty-icon">${icon('server')}</div><h3>Инфраструктура начинается с первого сервера</h3><p>Добавьте IP, домен или health-check адрес. Pulsewatch будет следить за ним в фоне.</p><button class="button primary" data-add>${icon('plus')}Добавить сервер</button><button class="text-button" data-demo>Посмотреть пример ↗</button></div>`;
+    $('#server-list').innerHTML = `<div class="empty-state"><div class="empty-icon">${icon('server')}</div><h3>Инфраструктура начинается с первого сервера</h3><p>Добавьте IP, домен или health-check адрес. StackWatch будет следить за ним в фоне.</p><button class="button primary" data-add>${icon('plus')}Добавить сервер</button><button class="text-button" data-demo>Посмотреть пример ↗</button></div>`;
     return;
   }
   if (!filtered.length) { $('#server-list').innerHTML = '<div class="empty-state"><h3>Серверы не найдены</h3><p>Попробуйте другой запрос или сбросьте фильтры.</p><button class="button secondary" data-reset-filters>Сбросить фильтры</button></div>'; return; }
@@ -159,7 +159,7 @@ async function poll() {
         if (!demo) {
           beep();
           if (notifications && 'Notification' in window && Notification.permission === 'granted') {
-            try { new Notification(`Pulsewatch · ${i.environment.toUpperCase()}`, { body: `${i.name}: ${i.detail}`, tag: i.id }); } catch {}
+            try { new Notification(`StackWatch · ${i.environment.toUpperCase()}`, { body: `${i.name}: ${i.detail}`, tag: i.id }); } catch {}
           }
         }
       }
@@ -173,7 +173,7 @@ async function poll() {
   } catch (e) {
     connected = false;
     $('#connection-warning').hidden = false;
-    $('#connection-warning').textContent = 'Нет связи со службой мониторинга. Показанные данные могли устареть. Проверьте, запущен ли Pulsewatch.';
+    $('#connection-warning').textContent = 'Нет связи со службой мониторинга. Показанные данные могли устареть. Проверьте, запущен ли StackWatch.';
     $('#engine-dot').className = 'dot down'; $('#engine-label').textContent = 'Нет связи со службой'; $('#refresh-label').textContent = 'Нет свежих данных';
   } finally { polling = false; render(); document.dispatchEvent(new Event('pulsewatch:update')); }
 }
@@ -183,7 +183,7 @@ function syncKind() {
   $('#port-field').hidden = kind !== 'tcp'; $('#token-field').hidden = kind !== 'agent'; $('#http-code-field').hidden = kind === 'tcp';
   const target = $('#monitor-form').elements.target;
   target.placeholder = kind === 'tcp' ? '192.168.1.10 или db.example.com' : kind === 'agent' ? 'https://server.example.com/health' : 'https://example.com/health';
-  $('#target-hint').textContent = kind === 'tcp' ? 'IP или домен без протокола. Порт укажите отдельно.' : kind === 'agent' ? 'Адрес агента Pulsewatch с путём /health.' : 'Полный URL. Проверяется точный HTTP-код, без перехода по редиректам.';
+  $('#target-hint').textContent = kind === 'tcp' ? 'IP или домен без протокола. Порт укажите отдельно.' : kind === 'agent' ? 'Адрес агента StackWatch с путём /health.' : 'Полный URL. Проверяется точный HTTP-код, без перехода по редиректам.';
 }
 function openForm(id = null) {
   if (id && demo) { toast('Демо-данные нельзя изменять. Добавьте свой сервер.'); return; }

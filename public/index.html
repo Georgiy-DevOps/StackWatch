@@ -2,14 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark"><meta name="description" content="Pulsewatch — состояние серверов Linux и Windows, доступность сервисов и история инцидентов.">
-  <title>Pulsewatch · Мониторинг серверов</title>
+  <meta name="color-scheme" content="dark"><meta name="description" content="StackWatch — состояние серверов Linux и Windows, доступность сервисов и история инцидентов.">
+  <title>StackWatch · Мониторинг серверов</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/upgrade.css"><script src="/app.js" defer></script><script src="/upgrade.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">К содержимому</a>
   <aside class="sidebar">
-    <a class="brand" href="/" aria-label="Pulsewatch, главная"><span class="brand-mark">⌁</span><span>pulsewatch<span class="brand-caption">INFRASTRUCTURE MONITOR</span></span></a>
+    <a class="brand" href="/" aria-label="StackWatch, главная"><span class="brand-mark">⌁</span><span>StackWatch<span class="brand-caption">INFRASTRUCTURE MONITOR</span></span></a>
     <div class="workspace"><span class="workspace-avatar">I</span><div>Моя инфраструктура<small>Linux & Windows</small></div></div>
     <p class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</p>
     <nav aria-label="Главная навигация">
@@ -17,7 +17,7 @@
       <button class="nav-item" data-view="incidents"><span data-icon="alert"></span>Инциденты<span class="nav-count" id="incident-count">0</span></button>
       <button class="nav-item" data-view="settings"><span data-icon="settings"></span>Настройки</button>
     </nav>
-    <div class="sidebar-bottom"><div class="engine-label"><span class="dot unknown" id="engine-dot"></span><span id="engine-label">Подключение…</span></div><small id="engine-sub">Фоновые проверки серверов</small><div class="version">PULSEWATCH <span>v1.0</span></div></div>
+    <div class="sidebar-bottom"><div class="engine-label"><span class="dot unknown" id="engine-dot"></span><span id="engine-label">Подключение…</span></div><small id="engine-sub">Фоновые проверки серверов</small><div class="version">STACKWATCH <span>v2.0</span></div></div>
   </aside>
   <div class="shell">
     <header class="topbar"><div class="breadcrumb">Инфраструктура <span>/</span> <strong id="breadcrumb">Обзор серверов</strong></div><div class="top-actions"><span class="live-label" id="refresh-label">Подключение…</span><button class="icon-button" id="sound-button" aria-label="Включить звук тревог" title="Включить звук тревог" aria-pressed="false"><span data-icon="volume"></span></button><span class="avatar" title="Локальная панель">OP</span></div></header>
@@ -35,7 +35,7 @@
           <div class="fleet-footer"><span><span class="legend-dot up"></span>В норме <span class="legend-dot degraded"></span>Предупреждение <span class="legend-dot down"></span>Сбой</span><span>Полоски — проверки за 24 часа</span></div>
         </section>
         <section class="panel events-panel"><div class="panel-heading"><div class="section-title"><h2>Последние инциденты</h2><span class="subtle">за период хранения</span></div><button class="text-button" id="all-incidents">Все инциденты <span>↗</span></button></div><div id="recent-incidents"></div></section>
-        <footer class="page-footer"><span>Проверки выполняются, пока работает служба Pulsewatch.</span><button class="text-button" id="demo-toggle">Посмотреть демо</button></footer>
+        <footer class="page-footer"><span>Проверки выполняются, пока работает служба StackWatch.</span><button class="text-button" id="demo-toggle">Посмотреть демо</button></footer>
       </section>
       <section id="incidents-view" hidden><div class="page-heading"><div><div class="eyebrow">ЖУРНАЛ СОБЫТИЙ</div><h1>Инциденты</h1><p>Недоступность, предупреждения и восстановление.</p></div><select id="incident-filter" aria-label="Фильтр инцидентов"><option value="all">Все инциденты</option><option value="open">Открытые</option><option value="closed">Закрытые</option></select></div><div class="panel" id="incident-list"></div></section>
       <section id="settings-view" hidden><div class="page-heading"><div><div class="eyebrow">ПАРАМЕТРЫ ПАНЕЛИ</div><h1>Настройки</h1><p>Проверки, уведомления и доступ.</p></div></div><div class="settings-grid">
@@ -56,7 +56,7 @@
   </div><p class="form-error" id="form-error" role="alert"></p><div class="dialog-footer"><button class="button secondary" type="button" data-close="monitor-dialog">Отмена</button><button class="button primary" type="submit" id="save-monitor">Добавить и проверять</button></div></form></dialog>
   <dialog id="detail-dialog" class="detail-dialog" aria-label="Состояние сервера"><div id="detail-content"></div></dialog>
   <dialog id="confirm-dialog" aria-labelledby="confirm-title"><div class="dialog-heading"><h2 id="confirm-title">Удалить проверку?</h2></div><p id="confirm-text"></p><div class="dialog-footer"><button class="button secondary" data-close="confirm-dialog">Отмена</button><button class="button destructive" id="confirm-delete">Удалить</button></div></dialog>
-  <dialog id="login-dialog" aria-labelledby="login-title"><form id="login-form"><span class="brand-mark">⌁</span><h2 id="login-title">Вход в Pulsewatch</h2><p>Введите ключ доступа к вашей инфраструктуре.</p><label>Ключ доступа<input id="access-key" type="password" required autocomplete="current-password"></label><p class="form-error" id="login-error" role="alert"></p><button class="button primary" type="submit">Войти</button></form></dialog>
+  <dialog id="login-dialog" aria-labelledby="login-title"><form id="login-form"><span class="brand-mark">⌁</span><h2 id="login-title">Вход в StackWatch</h2><p>Введите ключ доступа к вашей инфраструктуре.</p><label>Ключ доступа<input id="access-key" type="password" required autocomplete="current-password"></label><p class="form-error" id="login-error" role="alert"></p><button class="button primary" type="submit">Войти</button></form></dialog>
   <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

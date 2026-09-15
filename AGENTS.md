@@ -1,4 +1,4 @@
-# Working on Pulsewatch
+# Working on StackWatch
 
 ## User's standing instructions
 
@@ -10,7 +10,11 @@
 
 ## Project
 
-Pulsewatch is a self-hosted Node.js 24+ service. It uses built-in SQLite and has no npm dependencies. The browser dashboard is in `public/`, checks and persistence are in `lib/`, and deployment tools are in `deploy/`.
+Repository: `https://github.com/Kirill-DevSecOps/StackWatch.git`; primary branch: `main`.
+
+The product name is StackWatch. Existing `pulsewatch` database filenames, Docker service and volume identifiers, system users, protocol markers, and browser preference keys are kept for compatibility. A future rename of those identifiers needs a migration, not a global replacement.
+
+StackWatch is a self-hosted Node.js 24+ service. It uses built-in SQLite and has no npm dependencies. The browser dashboard is in `public/`, checks and persistence are in `lib/`, and deployment tools are in `deploy/`.
 
 - Run `node --test test/*.test.mjs` for monitoring, persistence, authentication, or notification changes. For documentation and style changes use a proportional check.
 - Keep `data/`, runtime `.env` files, tokens, SSH credentials, private keys, backup archives, and actual server addresses out of commits and distributable source archives. Example environment files may be committed.

@@ -39,6 +39,6 @@ const server = http.createServer((req, res) => {
   res.end(JSON.stringify(metrics));
 });
 server.requestTimeout = 5000; server.headersTimeout = 5000;
-server.listen(port, host, () => console.log(`Pulsewatch agent listening on ${host}:${port}; disk: ${diskPath}`));
+server.listen(port, host, () => console.log(`StackWatch agent listening on ${host}:${port}; disk: ${diskPath}`));
 server.on('error', e => { console.error(e.message); clearInterval(timer); process.exit(1); });
 for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => { clearInterval(timer); server.close(() => process.exit(0)); });

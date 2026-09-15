@@ -110,7 +110,7 @@ export async function createApp(options = {}) {
           const last = store.setting('last_telegram_test', 0);
           if (Date.now() - last < 10000) throw new InputError('Повторная отправка доступна через 10 секунд.', 429);
           const now = Date.now(); store.setSetting('last_telegram_test', now);
-          store.enqueue({ id: 'test', name: 'Pulsewatch', environment: 'prod' }, { id: randomUUID(), type: 'test', started_at: now }, 'Telegram подключён. Сюда будут приходить уведомления.', now, [channel]);
+          store.enqueue({ id: 'test', name: 'StackWatch', environment: 'prod' }, { id: randomUUID(), type: 'test', started_at: now }, 'Telegram подключён. Сюда будут приходить уведомления.', now, [channel]);
           return json(res, 202, { queued: true });
         }
         const retry = url.pathname.match(/^\/api\/notifications\/([a-f\d-]+)\/retry$/);
@@ -162,7 +162,7 @@ export async function createApp(options = {}) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     const app = await createApp();
-    console.log(`Pulsewatch running at ${app.origin}`);
+    console.log(`StackWatch running at ${app.origin}`);
     console.log('Keep this process running for continuous checks. Ctrl+C to stop.');
     let stopping = false;
     for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { if (stopping) return; stopping = true; await app.close(); process.exit(0); });

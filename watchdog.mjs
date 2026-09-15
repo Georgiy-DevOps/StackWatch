@@ -8,7 +8,7 @@ export class Watchdog {
   constructor({ url, token, directory, channels, interval = 30000, timeout = 5000, failures = 3, recovery = 2, repeat = 1800000, fetchImpl = fetch, sender = sendNotification }) {
     const u = new URL(url);
     if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.hash) throw Error('WATCHDOG_URL must be an HTTP(S) /healthz URL without credentials.');
-    if (!token || token.length < 24) throw Error('Set WATCHDOG_TOKEN to the Pulsewatch health key.');
+    if (!token || token.length < 24) throw Error('Set WATCHDOG_TOKEN to the StackWatch health key.');
     if (!channels?.length) throw Error('Configure Telegram or webhook on the independent observer.');
     this.url = u.href; this.token = token; this.channels = channels.map(c => ({ ...c, destination: destinationId([c.channel, c.url, c.chat_id, c.token]) }));
     this.interval = interval; this.timeout = timeout; this.failures = failures; this.recovery = recovery; this.repeat = repeat; this.fetchImpl = fetchImpl; this.sender = sender;
@@ -20,7 +20,7 @@ export class Watchdog {
   }
   persist() { const temp = `${this.file}.tmp`; writeFileSync(temp, JSON.stringify(this.state), { mode: 0o600 }); renameSync(temp, this.file); }
   enqueue(type, now, message) {
-    const event = { event_id: randomUUID(), incident_id: String(this.state.down_since ?? now), event: type, monitor: { id: 'pulsewatch-service', name: 'Служба Pulsewatch', environment: 'prod' }, message, started_at: new Date(this.state.down_since ?? now).toISOString(), timestamp: new Date(now).toISOString(), duration_seconds: Math.floor((now - (this.state.down_since ?? now)) / 1000) };
+    const event = { event_id: randomUUID(), incident_id: String(this.state.down_since ?? now), event: type, monitor: { id: 'pulsewatch-service', name: 'Служба StackWatch', environment: 'prod' }, message, started_at: new Date(this.state.down_since ?? now).toISOString(), timestamp: new Date(now).toISOString(), duration_seconds: Math.floor((now - (this.state.down_since ?? now)) / 1000) };
     for (const c of this.channels) this.state.queue.push({ event, channel: c.channel, destination: c.destination, attempts: 0, next_try: 0 });
     this.state.last_notice = now;
   }
@@ -73,7 +73,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     if (process.env.WATCHDOG_TELEGRAM_TOKEN && process.env.WATCHDOG_TELEGRAM_CHAT_ID) channels.push({ channel: 'telegram', token: process.env.WATCHDOG_TELEGRAM_TOKEN, chat_id: process.env.WATCHDOG_TELEGRAM_CHAT_ID });
     if (process.env.WATCHDOG_WEBHOOK_URL) channels.push({ channel: 'webhook', url: process.env.WATCHDOG_WEBHOOK_URL, token: process.env.WATCHDOG_WEBHOOK_TOKEN ?? '' });
     const watcher = new Watchdog({ url: process.env.WATCHDOG_URL, token: process.env.WATCHDOG_TOKEN, directory: process.env.WATCHDOG_DATA_DIR ?? './watchdog-data', channels });
-    watcher.start(); console.log('Pulsewatch observer started. Run it on an independent machine.');
+    watcher.start(); console.log('StackWatch observer started. Run it on an independent machine.');
     for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { await watcher.stop(); process.exit(0); });
   } catch (e) { console.error(e.message); process.exit(1); }
 }

@@ -14,7 +14,7 @@ if [[ -e "$agent_root" && ! -f "$agent_root/.pulsewatch-managed" ]]; then echo '
 if [[ -e "$agent_unit" ]] && ! grep -q '^# Managed by Pulsewatch installer$' "$agent_unit"; then echo 'An unmanaged service already exists; it was not changed.' >&2; exit 1; fi
 if [[ -e "$agent_env" && ! -f "$agent_root/.pulsewatch-managed" ]]; then echo 'An existing agent configuration was not changed.' >&2; exit 1; fi
 install -d -m 755 "$agent_root"
-printf '%s\n' 'Pulsewatch agent installer v1' > "$agent_root/.pulsewatch-managed"
+printf '%s\n' 'StackWatch agent installer v1' > "$agent_root/.pulsewatch-managed"
 
 # Reuse a system-wide Node 24+ or install an isolated official runtime for this agent.
 node_binary=''
@@ -65,7 +65,7 @@ install -m 644 "$agent_root/agent.mjs.new" "$agent_root/agent.mjs"
 cat > "$agent_unit" <<UNIT
 # Managed by Pulsewatch installer
 [Unit]
-Description=Pulsewatch Linux metrics agent
+Description=StackWatch Linux metrics agent
 After=network.target
 [Service]
 Type=simple
