@@ -1,0 +1,15 @@
+# Run on another host, independent of the Pulsewatch server.
+services:
+  watchdog:
+    build: .
+    restart: unless-stopped
+    command: ["node", "watchdog.mjs"]
+    env_file: .env.watchdog
+    environment:
+      WATCHDOG_DATA_DIR: /app/watchdog-data
+    volumes:
+      - watchdog-data:/app/watchdog-data
+    healthcheck:
+      disable: true
+volumes:
+  watchdog-data:

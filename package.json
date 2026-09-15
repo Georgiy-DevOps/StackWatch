@@ -1,0 +1,9 @@
+{
+  "name": "pulsewatch",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted Linux and Windows server monitoring",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": { "start": "node --env-file-if-exists=.env server.mjs", "agent": "node --env-file-if-exists=.env.agent agent.mjs", "watchdog": "node --env-file=.env.watchdog watchdog.mjs", "test": "node --test test/*.test.mjs" }
+}

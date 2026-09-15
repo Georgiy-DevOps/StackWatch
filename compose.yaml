@@ -1,0 +1,18 @@
+services:
+  pulsewatch:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4310:4310"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4310
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:4310}
+      ACCESS_KEY: ${ACCESS_KEY:?Set ACCESS_KEY in .env to a random key of 16+ characters}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_WEBHOOK_TOKEN: ${ALERT_WEBHOOK_TOKEN:-}
+      RETENTION_DAYS: ${RETENTION_DAYS:-7}
+    volumes:
+      - pulsewatch-data:/app/data
+volumes:
+  pulsewatch-data:

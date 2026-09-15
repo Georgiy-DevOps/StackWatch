@@ -1,0 +1,22 @@
+[Unit]
+Description=Pulsewatch server monitoring
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pulsewatch
+Group=pulsewatch
+WorkingDirectory=/opt/pulsewatch
+ExecStart=/usr/bin/node --env-file-if-exists=.env /opt/pulsewatch/server.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/pulsewatch
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

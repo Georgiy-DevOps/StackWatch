@@ -1,0 +1,11 @@
+data
+.env
+.env.agent
+.env.production
+.env.watchdog
+watchdog-data
+backups
+*.log
+node_modules
+.git
+test

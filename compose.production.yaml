@@ -1,0 +1,42 @@
+services:
+  pulsewatch:
+    build: .
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4310
+      PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN using deploy/setup.mjs}
+      ACCESS_KEY: ${ACCESS_KEY:?Set ACCESS_KEY}
+      HEALTH_TOKEN: ${HEALTH_TOKEN:?Set HEALTH_TOKEN}
+      RETENTION_DAYS: ${RETENTION_DAYS:-7}
+      BACKUP_HOURS: ${BACKUP_HOURS:-24}
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_WEBHOOK_TOKEN: ${ALERT_WEBHOOK_TOKEN:-}
+    volumes:
+      - pulsewatch-data:/app/data
+    networks:
+      - monitoring
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      pulsewatch:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - monitoring
+networks:
+  monitoring:
+volumes:
+  pulsewatch-data:
+  caddy-data:
+  caddy-config:
