@@ -31,13 +31,20 @@ if [[ -z "$node_binary" ]]; then
   elif command -v wget >/dev/null; then
     fetch_file() { wget -q --https-only --timeout=60 "$1" -O "$2"; }
   else echo 'Install curl or wget and retry.' >&2; exit 1; fi
-  echo 'Downloading isolated Node.js 24 LTS from nodejs.org...' >&2
+  # Версия и SHA-256 закреплены в скрипте и взяты из SHASUMS256.txt.asc, подпись которого
+  # проверена ключами релизов Node.js (github.com/nodejs/release-keys). Хэш из того же
+  # источника, что и архив, защищает только от повреждения, а не от подмены зеркала.
+  # При обновлении версии: скачать SHASUMS256.txt.asc, проверить gpg --verify, заменить значения.
+  node_version=v24.22.2
+  case "$node_arch" in
+    x64) node_sha256=48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75;;
+    arm64) node_sha256=eb187837a2230d4047161ac0be008584e16b46f726e9c9490ee35dc6b17d9ba8;;
+  esac
+  node_archive="node-$node_version-linux-$node_arch.tar.xz"
+  echo "Downloading isolated Node.js $node_version from nodejs.org..." >&2
   install -d -m 755 "$agent_root/runtime"
-  fetch_file https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt "$agent_root/runtime/SHASUMS256.txt"
-  node_archive=$(awk -v arch="$node_arch" '$2 ~ ("^node-v24\\.[0-9]+\\.[0-9]+-linux-" arch "\\.tar\\.xz$") { print $2 }' "$agent_root/runtime/SHASUMS256.txt")
-  [[ "$node_archive" =~ ^node-v24\.[0-9]+\.[0-9]+-linux-(x64|arm64)\.tar\.xz$ ]] || { echo 'Could not resolve an official Node.js 24 release.' >&2; exit 1; }
-  fetch_file "https://nodejs.org/dist/latest-v24.x/$node_archive" "$agent_root/runtime/$node_archive"
-  (cd "$agent_root/runtime" && awk -v file="$node_archive" '$2 == file' SHASUMS256.txt | sha256sum -c - >&2)
+  fetch_file "https://nodejs.org/dist/$node_version/$node_archive" "$agent_root/runtime/$node_archive"
+  (cd "$agent_root/runtime" && printf '%s  %s\n' "$node_sha256" "$node_archive" | sha256sum -c - >&2)
   tar --no-same-owner -xJf "$agent_root/runtime/$node_archive" -C "$agent_root/runtime"
   chmod -R a+rX "$agent_root/runtime/${node_archive%.tar.xz}"
   ln -sfn "$agent_root/runtime/${node_archive%.tar.xz}" "$agent_root/runtime/node"

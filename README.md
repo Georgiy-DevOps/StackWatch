@@ -175,6 +175,10 @@ docker compose --env-file .env.production -f compose.production.yaml up -d --bui
 docker compose --env-file .env.production -f compose.production.yaml logs -f
 ```
 
+Сессии входа хранятся в памяти сервера: «Выйти» сразу отзывает cookie, а после перезапуска службы нужно войти заново. Лимит попыток входа считается по IP клиента; за Caddy это работает через `TRUST_PROXY=1`, который уже задан в `compose.production.yaml`. Не включайте `TRUST_PROXY`, если приложение доступно напрямую, минуя прокси: тогда клиент сможет подставить любой IP.
+
+Контейнеры запускаются с файловой системой только для чтения, без Linux capabilities (Caddy получает лишь `NET_BIND_SERVICE`) и с `no-new-privileges`. Базовые образы закреплены по digest; при обновлении замените тег и digest вместе.
+
 Caddy получает и продлевает сертификат, перенаправляет HTTP на HTTPS. Приложение доступно только внутри Docker-сети, наружу публикуются 80/443. Данные и сертификаты находятся в постоянных именованных томах. Успешный выпуск сертификата требует корректного DNS и сетевого доступа: [Automatic HTTPS](https://caddyserver.com/docs/automatic-https).
 
 ### Перенос уже подключённых серверов

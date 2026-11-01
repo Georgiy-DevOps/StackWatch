@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { createHash, createHmac, timingSafeEqual, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, timingSafeEqual, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, chmodSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -51,13 +51,29 @@ export async function createApp(options = {}) {
   const startedAt = Date.now();
   let origin;
   const failures = new Map();
-  const sign = expires => createHmac('sha256', accessKey).update(`pulsewatch:${expires}`).digest('hex');
+  // TRUST_PROXY=1 только за своим обратным прокси (Caddy из compose.production.yaml):
+  // иначе все клиенты видны с одного IP прокси, и чужие ошибки входа блокируют администратора.
+  const trustProxy = ['1', 'true'].includes(String(options.trustProxy ?? process.env.TRUST_PROXY ?? '').toLowerCase());
+  const clientIp = req => {
+    // Caddy перезаписывает X-Forwarded-For адресом реального клиента; берём последний элемент,
+    // который добавил наш прокси, а не подставленный клиентом первый.
+    const forwarded = trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').map(v => v.trim()).filter(Boolean).at(-1) : '';
+    return forwarded && forwarded.length <= 64 ? forwarded : req.socket.remoteAddress;
+  };
+  // Сессии хранятся на сервере: выход и перезапуск действительно отзывают cookie.
+  // В памяти лежит только SHA-256 токена, сам токен знает лишь браузер.
+  const sessionTtl = 43200000, maxSessions = 1000;
+  const sessions = new Map();
+  const sessionCookie = req => req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('pw_session='))?.slice(11) ?? '';
+  const sessionId = token => createHash('sha256').update(token).digest('hex');
   const loggedIn = req => {
     if (!accessKey) return true;
-    const cookie = req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('pw_session='))?.slice(11);
-    if (!cookie || cookie.length > 128) return false;
-    const [expires, signature] = cookie.split('.');
-    return /^\d+$/.test(expires) && Number(expires) > Date.now() && Number(expires) < Date.now() + 43201000 && equal(signature ?? '', sign(expires));
+    const token = sessionCookie(req);
+    if (!/^[a-f\d]{64}$/.test(token)) return false;
+    const id = sessionId(token), expires = sessions.get(id);
+    if (!expires) return false;
+    if (expires <= Date.now()) { sessions.delete(id); return false; }
+    return true;
   };
   const assets = new Map([
     ['/', ['index.html', 'text/html; charset=utf-8']], ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
@@ -86,21 +102,26 @@ export async function createApp(options = {}) {
       }
       if (url.pathname === '/api/session' && method === 'GET') return json(res, 200, { required: Boolean(accessKey), logged_in: loggedIn(req) });
       if (url.pathname === '/api/login' && method === 'POST') {
-        const ip = req.socket.remoteAddress;
+        const ip = clientIp(req);
         const now = Date.now();
         for (const [key, v] of failures) if (now - v.since > 60000) failures.delete(key);
+        // Вместо глобальной блокировки при переполнении вытесняем самые старые записи.
+        while (failures.size >= 1000) failures.delete(failures.keys().next().value);
         const attempt = failures.get(ip) ?? { since: now, count: 0 };
-        if (attempt.count >= 5 || failures.size > 1000) throw new InputError('Слишком много попыток. Повторите через минуту.', 429);
+        if (attempt.count >= 5) throw new InputError('Слишком много попыток. Повторите через минуту.', 429);
         const b = await body(req);
         if (typeof b?.key !== 'string' || !equal(b.key, accessKey)) { attempt.count++; failures.set(ip, attempt); throw new InputError('Неверный ключ доступа.', 401); }
         failures.delete(ip);
-        const expires = String(now + 43200000);
-        res.setHeader('Set-Cookie', `pw_session=${expires}.${sign(expires)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200${origin.startsWith('https:') ? '; Secure' : ''}`);
+        for (const [id, expires] of sessions) if (expires <= now) sessions.delete(id);
+        while (sessions.size >= maxSessions) sessions.delete(sessions.keys().next().value);
+        const token = randomBytes(32).toString('hex');
+        sessions.set(sessionId(token), now + sessionTtl);
+        res.setHeader('Set-Cookie', `pw_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${sessionTtl / 1000}${origin.startsWith('https:') ? '; Secure' : ''}`);
         return json(res, 200, { ok: true });
       }
       if (url.pathname.startsWith('/api/')) {
         if (!loggedIn(req)) throw new InputError('Введите ключ доступа.', 401);
-        if (url.pathname === '/api/logout' && method === 'POST') { res.setHeader('Set-Cookie', 'pw_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'); return json(res, 200, { ok: true }); }
+        if (url.pathname === '/api/logout' && method === 'POST') { sessions.delete(sessionId(sessionCookie(req))); res.setHeader('Set-Cookie', 'pw_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'); return json(res, 200, { ok: true }); }
         if (url.pathname === '/api/snapshot' && method === 'GET') return json(res, 200, { ...store.snapshot(), engine: { started_at: startedAt, last_tick: engine.lastTick, active: engine.active.size, running: engine.running, error: engine.lastError }, settings: { version: '2.0.0', webhook_configured: Boolean(webhook), telegram: notifications.public(), retention_days: retentionDays, auth_enabled: Boolean(accessKey), origin, secure: origin.startsWith('https:'), backup: backups.status(), watchdog: { endpoint: `${origin}/healthz`, last_seen: store.setting('watchdog_last_seen') } } });
         if (url.pathname === '/api/notifications' && method === 'PUT') return json(res, 200, notifications.save(await body(req)));
         if (url.pathname === '/api/notifications/deliveries' && method === 'GET') return json(res, 200, store.deliveries());
