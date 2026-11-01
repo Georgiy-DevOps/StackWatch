@@ -2,9 +2,18 @@ services:
   pulsewatch:
     build: .
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       HOST: 0.0.0.0
       PORT: 4310
+      # Порт приложения доступен только Caddy внутри сети Docker, поэтому X-Forwarded-For доверенный.
+      TRUST_PROXY: "1"
       PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN using deploy/setup.mjs}
       ACCESS_KEY: ${ACCESS_KEY:?Set ACCESS_KEY}
       HEALTH_TOKEN: ${HEALTH_TOKEN:?Set HEALTH_TOKEN}
@@ -18,8 +27,17 @@ services:
     networks:
       - monitoring
   gateway:
-    image: caddy:2-alpine
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       pulsewatch:
         condition: service_healthy

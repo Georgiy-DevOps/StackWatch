@@ -127,6 +127,38 @@ test('API authentication, CSRF, Host validation, input validation and persistent
   assert.equal((await call('/api/monitors', { method: 'POST', headers: { ...headers, Origin: 'https://attacker.example' }, body: '{}' })).status, 403);
 });
 
+test('logout revokes the server-side session; forged and replayed cookies are rejected', async t => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'pulsewatch-session-'));
+  const key = 'test-access-key-very-long';
+  const app = await createApp({ port: 0, host: '127.0.0.1', dataDir: dir, accessKey: key, startEngine: false });
+  t.after(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }); });
+  const call = (route, options = {}) => fetch(`${app.origin}${route}`, options);
+  const login = await call('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: app.origin }, body: JSON.stringify({ key }) });
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  const headers = { Cookie: cookie, 'Content-Type': 'application/json', Origin: app.origin };
+  assert.equal((await call('/api/snapshot', { headers })).status, 200);
+  // Подделанный токен правильного формата не принимается.
+  assert.equal((await call('/api/snapshot', { headers: { Cookie: `pw_session=${'a'.repeat(64)}` } })).status, 401);
+  // Старый формат expires.signature больше не действует.
+  assert.equal((await call('/api/snapshot', { headers: { Cookie: `pw_session=${Date.now() + 1000}.deadbeef` } })).status, 401);
+  assert.equal((await call('/api/logout', { method: 'POST', headers })).status, 200);
+  // После выхода тот же cookie (например, украденный) уже недействителен.
+  assert.equal((await call('/api/snapshot', { headers })).status, 401);
+});
+
+test('behind a trusted proxy, one client failing logins does not lock out another', async t => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'pulsewatch-proxy-'));
+  const key = 'test-access-key-very-long';
+  const app = await createApp({ port: 0, host: '127.0.0.1', dataDir: dir, accessKey: key, startEngine: false, trustProxy: true });
+  t.after(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }); });
+  const attempt = (ip, value) => fetch(`${app.origin}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: app.origin, 'X-Forwarded-For': ip }, body: JSON.stringify({ key: value }) });
+  for (let i = 0; i < 5; i++) assert.equal((await attempt('203.0.113.66', 'wrong-key-attempt-xx')).status, 401);
+  assert.equal((await attempt('203.0.113.66', key)).status, 429);
+  // Подмена первого элемента цепочки не обходит блокировку: учитывается адрес, добавленный прокси.
+  assert.equal((await attempt('198.51.100.1, 203.0.113.66', key)).status, 429);
+  assert.equal((await attempt('198.51.100.7', key)).status, 200);
+});
+
 test('scheduler works without a browser; webhook delivery retries once per event', async t => {
   let checks = 0, status = 503, hookCalls = 0; const events = [];
   const fixture = http.createServer((req, res) => { checks++; res.writeHead(status); res.end(); });

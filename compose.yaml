@@ -2,6 +2,13 @@ services:
   pulsewatch:
     build: .
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:4310:4310"
     environment:
