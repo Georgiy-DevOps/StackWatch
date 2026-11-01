@@ -1,0 +1,40 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Минимальные права токена: CI только читает код.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Действия закреплены по SHA коммита, а не по изменяемому тегу.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Syntax check
+        run: |
+          for f in *.mjs lib/*.mjs deploy/*.mjs public/*.js; do node --check "$f"; done
+          bash -n deploy/linux-bootstrap.sh
+      - name: Tests
+        run: node --test test/*.test.mjs
+      - name: Compose files are valid
+        run: |
+          touch .env.watchdog
+          for f in compose.yaml compose.production.yaml compose.watchdog.yaml; do
+            DOMAIN=ci.example ACCESS_KEY=ci-access-key-0000000 HEALTH_TOKEN=ci-health-token-000000000000 \
+              docker compose -f "$f" config -q
+          done
