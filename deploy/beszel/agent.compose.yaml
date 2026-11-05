@@ -1,0 +1,67 @@
+# Агент для удалённого хоста. Только исходящее подключение к hub по HTTPS (WebSocket):
+# на хосте не нужно открывать ни одного входящего порта.
+# Запуск: положите рядом agent.env (chmod 600) и выполните
+#   docker compose -f agent.compose.yaml --env-file agent.env up -d
+
+services:
+  docker-proxy:
+    restart: unless-stopped
+    image: linuxserver/socket-proxy:3.4.6@sha256:8c059dcb7f496212967dcf1d4136f727f2a23eea4da881945c12b1414aafdf4c
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      CONTAINERS: 1
+      INFO: 1
+      VERSION: 1
+      PING: 1
+      POST: 0
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:2375:2375"
+    mem_limit: 64m
+    pids_limit: 64
+
+  beszel-agent:
+    restart: unless-stopped
+    image: henrygd/beszel-agent:0.21.1@sha256:cb6868012964d7a68debaa2c84bb72285e5f08531e81f506bd4c493bf052e41c
+    network_mode: host
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      - docker-proxy
+    environment:
+      KEY: ${AGENT_KEY:?Публичный ключ hub}
+      TOKEN: ${AGENT_TOKEN:?Токен регистрации (секрет)}
+      # Только https: иначе токен уйдёт открытым текстом
+      HUB_URL: https://${BESZEL_DOMAIN:?Домен hub}
+      LISTEN: 127.0.0.1:45876
+      DOCKER_HOST: tcp://127.0.0.1:2375
+      NICS: ${AGENT_NICS:-}
+    volumes:
+      - beszel-agent-data:/var/lib/beszel-agent
+      # - /mnt/data/.beszel:/extra-filesystems/data:ro
+    healthcheck:
+      test: ["CMD", "/agent", "health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 128m
+    pids_limit: 128
+
+volumes:
+  beszel-agent-data:

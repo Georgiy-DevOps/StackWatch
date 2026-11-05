@@ -1,0 +1,42 @@
+{
+	email {$ACME_EMAIL}
+	# Не светим версию/админку Caddy
+	admin off
+}
+
+{$BESZEL_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Админка PocketBase (/_/) и вход суперпользователя — только с доверенных адресов.
+	# Это «god mode» консоль: полный доступ к БД, ключам и настройкам.
+	@superuser {
+		path /_/* /api/collections/_superusers/* /api/backups* /api/settings*
+		not remote_ip {$ADMIN_ALLOW_CIDRS}
+	}
+	respond @superuser 403
+
+	# UI и API пользователей — по allowlist (по умолчанию открыт всем).
+	# Эндпоинт агентов не ограничиваем: удалённые хосты подключаются с любых IP,
+	# а аутентифицируются токеном + SSH-ключом hub.
+	@ui_blocked {
+		not path /api/beszel/agent-connect
+		not remote_ip {$UI_ALLOW_CIDRS}
+	}
+	respond @ui_blocked 403
+
+	reverse_proxy beszel:8090
+}
+
+# Голый IP по HTTP больше не отдаёт панель
+:80 {
+	respond 404
+}
