@@ -1,0 +1,147 @@
+# Beszel: hub + локальный агент + Caddy (TLS) + docker-socket-proxy.
+# Запуск: cp .env.example .env && отредактировать && docker compose up -d
+#
+# Модель безопасности (кратко):
+#  - наружу торчат только 80/443 (Caddy); hub слушает 127.0.0.1:8090;
+#  - агенты подключаются к hub исходящим WebSocket (HUB_URL), входящих портов на хостах нет;
+#  - агент видит Docker только через read-only API-прокси, а не через сам сокет;
+#  - образы закреплены по digest — обновление осознанное, а не «latest прилетел ночью».
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  beszel:
+    <<: *hardening
+    image: henrygd/beszel:0.21.1@sha256:8514a69d9bbbcb74f371a3205561ee231fc0289739cea64e8131f341d695b770
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      # Внешний адрес — используется в ссылках уведомлений и для агентов
+      APP_URL: https://${BESZEL_DOMAIN:?Задайте BESZEL_DOMAIN в .env}
+      # Регистрация новых пользователей закрыта; пользователей создаёт админ
+      USER_CREATION: "false"
+    volumes:
+      # Тут data.db, auxiliary.db и id_ed25519 (приватный ключ hub!) — бэкапить и шифровать
+      - ./data/hub:/beszel_data
+    ports:
+      # Только loopback: нужен локальному агенту (network_mode: host).
+      # ВАЖНО: Docker-публикация портов обходит ufw, поэтому 0.0.0.0 здесь недопустим.
+      - "127.0.0.1:8090:8090"
+    networks:
+      - beszel
+    healthcheck:
+      test: ["CMD", "/beszel", "health", "--url", "http://localhost:8090"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 512m
+    pids_limit: 256
+
+  gateway:
+    <<: *hardening
+    image: caddy:2.11.9-alpine@sha256:e8d293dca35c033c4eb958d77b9096098e34da2987da3954acc0028267c6cc9b
+    cap_add:
+      - NET_BIND_SERVICE   # только чтобы слушать 80/443
+    read_only: true
+    depends_on:
+      beszel:
+        condition: service_healthy
+    environment:
+      BESZEL_DOMAIN: ${BESZEL_DOMAIN:?Задайте BESZEL_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Задайте ACME_EMAIL}
+      ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS:-127.0.0.1/32}
+      UI_ALLOW_CIDRS: ${UI_ALLOW_CIDRS:-0.0.0.0/0 ::/0}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"      # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - beszel
+    mem_limit: 256m
+    pids_limit: 256
+
+  # Read-only прокси к Docker API: агенту нужны только список контейнеров и их статистика.
+  # Монтировать /var/run/docker.sock в агент напрямую = root на хосте при компрометации агента
+  # (флаг :ro на сокете НЕ ограничивает API — это как дать read-only ярлык на админ-консоль).
+  docker-proxy:
+    restart: unless-stopped
+    image: linuxserver/socket-proxy:3.4.6@sha256:8c059dcb7f496212967dcf1d4136f727f2a23eea4da881945c12b1414aafdf4c
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      CONTAINERS: 1   # /containers/json, /containers/{id}/stats|json|logs (только GET)
+      INFO: 1
+      VERSION: 1
+      PING: 1
+      POST: 0         # никаких изменяющих запросов
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      # Агент живёт в host-сети, поэтому прокси публикуется на loopback
+      - "127.0.0.1:2375:2375"
+    mem_limit: 64m
+    pids_limit: 64
+
+  beszel-agent:
+    <<: *hardening
+    image: henrygd/beszel-agent:0.21.1@sha256:cb6868012964d7a68debaa2c84bb72285e5f08531e81f506bd4c493bf052e41c
+    # host-сеть нужна, чтобы видеть реальные интерфейсы и трафик хоста
+    network_mode: host
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      - beszel
+      - docker-proxy
+    environment:
+      # Публичный ключ hub (Добавить систему → скопировать KEY). Не секрет, но и не мусор.
+      KEY: ${AGENT_KEY:?Скопируйте публичный ключ hub в AGENT_KEY}
+      # Токен регистрации агента — СЕКРЕТ
+      TOKEN: ${AGENT_TOKEN:?Задайте AGENT_TOKEN}
+      # Исходящее WebSocket-подключение к hub по loopback
+      HUB_URL: http://127.0.0.1:8090
+      # SSH-режим оставляем только на loopback, чтобы порт 45876 не торчал наружу
+      LISTEN: 127.0.0.1:45876
+      DOCKER_HOST: tcp://127.0.0.1:2375
+      # Сетевые интерфейсы, по которым считать трафик (пусто = все физические)
+      NICS: ${AGENT_NICS:-}
+    volumes:
+      # Отпечаток системы, чтобы после пересоздания контейнера агент остался «той же» системой
+      - beszel-agent-data:/var/lib/beszel-agent
+      # Доп. диски: раскомментируйте и пробросьте точку монтирования
+      # - /mnt/data/.beszel:/extra-filesystems/data:ro
+    healthcheck:
+      test: ["CMD", "/agent", "health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    mem_limit: 128m
+    pids_limit: 128
+
+networks:
+  beszel:
+
+volumes:
+  caddy-data:
+  caddy-config:
+  beszel-agent-data:
