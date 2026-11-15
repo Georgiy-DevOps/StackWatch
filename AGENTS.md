@@ -10,7 +10,7 @@
 
 ## Project
 
-Repository: `https://github.com/Kirill-DevSecOps/StackWatch.git`; primary branch: `main`.
+Repository: `https://github.com/Georgiy-DevOps/StackWatch.git`; primary branch: `main`.
 
 The product name is StackWatch. Existing `pulsewatch` database filenames, Docker service and volume identifiers, system users, protocol markers, and browser preference keys are kept for compatibility. A future rename of those identifiers needs a migration, not a global replacement.
 
