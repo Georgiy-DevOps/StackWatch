@@ -2,7 +2,7 @@
 
 Мониторинг серверов Linux и Windows: HTTP/HTTPS, TCP-порты, метрики агента, графики и инциденты. Проверки работают в отдельном процессе независимо от открытой вкладки.
 
-[Приватный репозиторий StackWatch](https://github.com/Kirill-DevSecOps/StackWatch).
+Репозиторий: [Georgiy-DevOps/StackWatch](https://github.com/Georgiy-DevOps/StackWatch).
 
 При обновлении сохранены совместимые имена базы `pulsewatch.sqlite`, служб и томов Docker, чтобы использовать накопленные данные. Название в интерфейсе, уведомлениях и документации — StackWatch.
 
@@ -16,10 +16,10 @@
 
 Нужен **Node.js 24+**. Сторонние npm-пакеты не требуются.
 
-Получение исходников при наличии доступа к приватному репозиторию:
+Получение исходников:
 
 ```sh
-git clone https://github.com/Kirill-DevSecOps/StackWatch.git
+git clone https://github.com/Georgiy-DevOps/StackWatch.git
 cd StackWatch
 ```
 
